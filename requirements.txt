@@ -1,0 +1,20 @@
+# Environnement pour data/gen_data.py et Model_Base_L2O (LISTA & co)
+# Testé avec Python 3.13 sous Windows.
+#
+# Installation :
+#   python -m venv env
+#   .\env\Scripts\Activate.ps1        (Windows)  /  source env/bin/activate  (Linux/Mac)
+#   pip install -r requirements.txt
+#
+# Avant de lancer Model_Base_L2O/train.py, forcer Keras 2 (le code n'est pas compatible Keras 3) :
+#   $env:TF_USE_LEGACY_KERAS = "1"     (PowerShell)  /  export TF_USE_LEGACY_KERAS=1  (bash)
+#
+# Model_Free_L2O (L2O-DM, RNNProp) demande un AUTRE environnement (Python 3.6, TF 1.14) :
+# voir "Model_Free_L2O/L2O-DM and L2O-RNNProp/requirements.txt".
+
+numpy==2.5.4
+tensorflow==2.21.0
+tf_keras==2.21.0                  # Keras 2, utilisé via TF_USE_LEGACY_KERAS=1
+tensorboard==2.21.0               # tf.summary dans train.py
+tensorflow-probability==0.25.0    # importé par Model_Base_L2O/models/utils.py
+absl-py==2.5.1
