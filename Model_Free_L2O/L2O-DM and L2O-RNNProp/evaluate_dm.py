@@ -35,6 +35,8 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string("optimizer", "L2L", "Optimizer.")
 flags.DEFINE_string("problem", "simple", "Type of problem.")
+flags.DEFINE_string("data_dir", None, "Dossier des données LASSO (problème lasso_data).")
+flags.DEFINE_float("lasso_lam", 0.005, "Lambda du LASSO (problème lasso_data).")
 
 flags.DEFINE_string("path", None, "Path to saved meta-optimizer network.")
 flags.DEFINE_string("output_path", None, "Path to output results.")
@@ -52,7 +54,8 @@ def main(_):
         tf.set_random_seed(FLAGS.seed)
 
     # Problem.
-    problem, net_config, net_assignments = util.get_config(FLAGS.problem, FLAGS.path)
+    problem, net_config, net_assignments = util.get_config(FLAGS.problem, FLAGS.path,
+        data_dir=FLAGS.data_dir, split="test", lasso_lam=FLAGS.lasso_lam)
 
     # Optimizer setup.
     if FLAGS.optimizer == "Adam":

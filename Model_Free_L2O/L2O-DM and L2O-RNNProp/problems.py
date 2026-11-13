@@ -174,6 +174,64 @@ def lasso_fixed(data_A, data_b, stddev=0.01, l=0.005, dtype=tf.float32):
 
   return build
 
+
+def lasso_data(data_dir, split="train", batch_size=128, l=0.005, stddev=0.01,
+               dtype=tf.float32):
+  """LASSO sur les données générées par data/gen_data.py (exemple 1 du Primer L2O).
+
+  f(x) = 1/2 ||A x - b||^2 + l ||x||_1, moyenné sur les instances du batch.
+
+  - A est fixe et partagée par toutes les instances (A.npy, forme (m, n)).
+  - Les b viennent de <split>_data.npy, dont chaque ligne vaut [b, x*].
+  - split="train" : à chaque reset, on tire un nouveau batch de batch_size instances
+    au hasard dans le jeu d'entraînement.
+  - split="val" / "test" : on prend toujours tout le jeu (1024 instances),
+    pour comparer les optimiseurs sur exactement les mêmes problèmes.
+
+  Le l par défaut (0.005) est le même que --lasso_lam côté model-based.
+  """
+  A_np = np.load(os.path.join(data_dir, "A.npy")).astype(np.float32)
+  data = np.load(os.path.join(data_dir, split + "_data.npy")).astype(np.float32)
+  m, n = A_np.shape
+  b_all_np = data[:, :m]  # on ne garde que les mesures b, pas x*
+
+  print("=" * 100)
+  print("LASSO ({}) : A {}, {} instances, lambda = {}".format(split, A_np.shape, len(b_all_np), l))
+  print("=" * 100)
+
+  # Créés une seule fois (et pas dans build, qui est appelé plusieurs fois par meta.py)
+  A = tf.constant(A_np, dtype=dtype, name="lasso_A")
+  b_all = tf.constant(b_all_np, dtype=dtype, name="lasso_b_all")
+
+  if split == "train":
+    num_instances = batch_size
+    idx = tf.random_uniform([batch_size], 0, len(b_all_np), dtype=tf.int32)
+    b_init = tf.gather(b_all, idx)  # réévalué à chaque reset => nouveau batch
+  else:
+    num_instances = len(b_all_np)
+    b_init = b_all
+
+  def build():
+    """Builds loss graph."""
+
+    # Variable optimisée : un x par instance (une ligne par instance).
+    x = tf.get_variable(
+        "x",
+        shape=[num_instances, n],
+        dtype=dtype,
+        initializer=tf.random_normal_initializer(stddev=stddev))
+
+    # Mesures b : non entraînables, réinitialisées à chaque reset.
+    b = tf.get_variable("b", initializer=b_init, trainable=False)
+
+    residual = tf.matmul(x, A, transpose_b=True) - b  # A x - b pour chaque ligne
+    left_term = 0.5 * tf.reduce_sum(residual ** 2, axis=1)
+    other_term = l * tf.reduce_sum(tf.abs(x), axis=1)
+    return tf.reduce_mean(left_term + other_term)
+
+  return build
+
+
 def rastrigin(batch_size=128, num_dims=10, alpha=10, stddev=1, dtype=tf.float32):
   
   def build():

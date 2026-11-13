@@ -48,6 +48,8 @@ flags.DEFINE_float("beta1", 0.95, "")
 flags.DEFINE_float("beta2", 0.95, "")
 
 flags.DEFINE_string("problem", "mnist", "Type of problem.")
+flags.DEFINE_string("data_dir", None, "Dossier des données LASSO (problème lasso_data).")
+flags.DEFINE_float("lasso_lam", 0.005, "Lambda du LASSO (problème lasso_data).")
 
 flags.DEFINE_boolean("if_scale", False, "")
 flags.DEFINE_float("rd_scale_bound", 3.0, "Bound for random scaling on the main optimizee.")
@@ -79,7 +81,8 @@ def main(_):
             os.mkdir(FLAGS.save_path)
 
     # Problem.
-    problem, net_config, net_assignments = util.get_config(FLAGS.problem, net_name="RNNprop")
+    problem, net_config, net_assignments = util.get_config(FLAGS.problem, net_name="RNNprop",
+        data_dir=FLAGS.data_dir, split="train", lasso_lam=FLAGS.lasso_lam)
 
     # Optimizer setup.
     optimizer = meta.MetaOptimizer(FLAGS.num_mt, FLAGS.beta1, FLAGS.beta2, **net_config)

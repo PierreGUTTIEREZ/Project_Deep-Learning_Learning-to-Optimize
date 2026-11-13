@@ -109,8 +109,12 @@ def get_default_net_config(path):
   }
 
 
-def get_config(problem_name, path=None, mode=None, num_hidden_layer=None, net_name=None):
-  """Returns problem configuration."""
+def get_config(problem_name, path=None, mode=None, num_hidden_layer=None, net_name=None,
+               data_dir=None, split="train", lasso_lam=0.005):
+  """Returns problem configuration.
+
+  data_dir, split et lasso_lam ne servent qu'au problème "lasso_data".
+  """
   if problem_name == "simple":
     problem = problems.simple()
     net_config = {"cw": {
@@ -244,7 +248,18 @@ def get_config(problem_name, path=None, mode=None, num_hidden_layer=None, net_na
         "net_path": path
     }}
     net_assignments = None
-  
+  elif problem_name == "lasso_data":
+    # LASSO sur nos données (data/gen_data.py) : il faut passer --data_dir
+    if data_dir is None:
+      raise ValueError("Le problème lasso_data demande --data_dir (dossier créé par data/gen_data.py)")
+    problem = problems.lasso_data(data_dir, split=split, l=lasso_lam)
+    net_config = {"cw": {
+        "net": "CoordinateWiseDeepLSTM",
+        "net_options": {"layers": (20, 20)},
+        "net_path": path
+    }}
+    net_assignments = None
+
   else:
     raise ValueError("{} is not a valid problem".format(problem_name))
 
