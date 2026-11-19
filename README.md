@@ -1,3 +1,18 @@
+## 🎓 IMT Atlantique project: Learning to Optimize on LASSO
+
+This fork is the base of our team deep learning project at IMT Atlantique (Mathematical & Computational Engineering track). The original Open-L2O README is kept below.
+
+**Goal:** compare learned optimizers (L2O) with classical solvers (ISTA / FISTA) on LASSO sparse-recovery problems.
+
+**What we added**
+- `data/`: generation of a synthetic LASSO dataset (train / test splits)
+- `Model_Free_L2O/L2O-DM and L2O-RNNProp/`: a new `lasso_data` problem (`--data_dir`, `--lasso_lam`) to train and evaluate the L2O-DM and RNNProp optimizers on this dataset
+- `project_ISTA_VS_LISTA/`: ISTA baseline for the ISTA vs. LISTA comparison
+
+**Status:** work in progress. Results and figures will be added here.
+
+---
+
 # Open-L2O
 
 This repository establishes the first comprehensive benchmark efforts of existing learning to optimize (L2O) approaches on a number of problems and settings. We release our software implementation and data as the Open-L2O package, for reproducible research and fair benchmarking in the L2O field. [[Paper](https://arxiv.org/abs/2103.12828)]
