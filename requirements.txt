@@ -18,3 +18,4 @@ tf_keras==2.21.0                  # Keras 2, utilisé via TF_USE_LEGACY_KERAS=1
 tensorboard==2.21.0               # tf.summary dans train.py
 tensorflow-probability==0.25.0    # importé par Model_Base_L2O/models/utils.py
 absl-py==2.5.1
+matplotlib
