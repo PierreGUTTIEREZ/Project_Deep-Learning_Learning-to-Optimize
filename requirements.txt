@@ -19,3 +19,4 @@ tensorboard==2.21.0               # tf.summary dans train.py
 tensorflow-probability==0.25.0    # importé par Model_Base_L2O/models/utils.py
 absl-py==2.5.1
 matplotlib
+torch
