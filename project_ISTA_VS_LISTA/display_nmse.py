@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 from ista import ISTA
+from fista import FISTA
 
 # Chemins
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,15 +24,18 @@ lam = 0.005
 
 # Initialisation
 model_ista = ISTA(A=A, b=b_test, L=L, lag=lam, x_true=x_true)
+model_fista = FISTA(A=A, b=b_test, L=L, lag=lam, x_true=x_true) 
 X_init = np.zeros_like(x_true)
 
 epochs = 1000
 print(f"Exécution d'ISTA sur {epochs} itérations...")
-X_est, nmse_history = model_ista.forward(X_init, epochs=epochs)
+X_ista, nmse_history_ista = model_ista.forward(X_init, epochs=epochs)
+X_fista, nmse_history_fista = model_fista.forward(X_init, epochs=epochs)
 
 # Affichage graphique
 plt.figure(figsize=(8, 5))
-plt.plot(range(len(nmse_history)), nmse_history, label="ISTA", color="navy", lw=2)
+plt.plot(range(len(nmse_history_ista)), nmse_history_ista, label="ISTA", color="navy", lw=2)
+plt.plot(range(len(nmse_history_fista)), nmse_history_fista, label="FISTA", color="red", lw=2)
 plt.xlabel("Itérations")
 plt.ylabel("NMSE (dB)")
 plt.title(f"Convergence d'ISTA sur le LASSO (noiseless {A.shape[0]}x{A.shape[1]})")
