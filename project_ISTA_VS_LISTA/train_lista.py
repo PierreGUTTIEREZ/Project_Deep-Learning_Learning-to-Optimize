@@ -51,7 +51,7 @@ scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
 # Mini-batchs de 128 exemples (tout le train d'un coup ne tiendrait pas en mémoire)
 train_loader = DataLoader(TensorDataset(b_train, x_train), batch_size=128, shuffle=True)
 
-epochs = 20 # number of epochs
+epochs = 200 # number of epochs
 losses = [] # loss moyenne sur chaque epoch
 nmse_val = [] # NMSE sur la validation à chaque epoch
 best_nmse = float("inf") # meilleure NMSE de validation rencontrée
