@@ -1,7 +1,8 @@
-from ista import ISTA
+from project_ISTA_VS_LISTA.models.ista import ISTA
 from pathlib import Path
 import numpy as np
-from ista import ISTA
+
+from models.ista import ISTA
 import sys
 sys.path.append(Path(__file__).resolve().parent.parent) 
 
