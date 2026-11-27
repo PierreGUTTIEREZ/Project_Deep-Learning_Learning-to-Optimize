@@ -1,0 +1,6 @@
+Algorithme,NMSE_finale_dB,Palier_3dB,Palier_5dB,Palier_10dB,Palier_15dB
+ISTA,-16.16,14,175,595,931
+FISTA,-41.51,8,35,66,83
+LISTA (K=16),-19.72,4,8,14,16
+LFISTA (K=16),-16.36,11,13,15,16
+LISTA-CP (K=16),-23.11,2,3,7,11

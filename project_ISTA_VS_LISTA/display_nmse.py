@@ -2,12 +2,13 @@ import os
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
-from fista import FISTA
+from models.fista import FISTA
 import sys
 import torch
 sys.path.append(Path(__file__).resolve().parent.parent)   # pour importer lista.py (à la racine du projet)
-from lista import LISTA
-from lfista import LFISTA
+from models.lista import LISTA
+from models.lfista import LFISTA
+from models.lista_cp import LISTA_CP
 
 # Chemins
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -26,7 +27,7 @@ print(f"Dimensions A: {A.shape}, L = {L:.4f}")
 
 lam = 0.005
 
-K = 32   # doit être le même que dans train_lista.py (lam aussi)
+K = 16   # doit être le même que dans train_lista.py (lam aussi)
 
 # importation des résultats d'ISTA
 data = np.load("project_ISTA_VS_LISTA/resultats_train/resultats_ista.npz")
@@ -56,12 +57,21 @@ with torch.no_grad():
     x_layers = model_lfista(torch.from_numpy(b_test), return_all=True)
 nmse_lfista = [0.0] + [model_lfista.compute_nmse_db(x_k, torch.from_numpy(x_true)) for x_k in x_layers]
 
+model_lista_cp = LISTA_CP(A=A, L=L, lag=lam, K=K)
+model_lista_cp.load_state_dict(torch.load(BASE_DIR / "project_ISTA_VS_LISTA" / "resultats_train" / f"lista_cp_K{K}.pt"))
+model_lista_cp.eval()
+
+with torch.no_grad():
+    x_layers = model_lista_cp(torch.from_numpy(b_test), return_all=True)
+nmse_lista_cp = [0.0] + [model_lista_cp.compute_nmse_db(x_k, torch.from_numpy(x_true)) for x_k in x_layers]
+
 # Affichage graphique
 plt.figure(figsize=(8, 5))
 plt.plot(range(K + 1), nmse_history_ista[:K + 1], label="ISTA", color="navy", lw=2)
 plt.plot(range(K + 1), nmse_history_fista[:K + 1], label="FISTA", color="red", lw=2)
 plt.plot(range(K + 1), nmse_lista, "-", label=f"LISTA ({K} couches)", color="darkorange", lw=2)
 plt.plot(range(K + 1), nmse_lfista, "-", label=f"LFISTA ({K} couches)", color="chartreuse", lw=2)
+plt.plot(range(K + 1), nmse_lista_cp, "-", label=f"LISTA-CP ({K} couches)", color="purple", lw=2)
 plt.xlabel("Itérations")
 plt.ylabel("NMSE (dB)")
 plt.title(f"Convergence sur le LASSO (noiseless {A.shape[0]}x{A.shape[1]}) pour K={K}")
