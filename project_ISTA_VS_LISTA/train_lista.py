@@ -10,8 +10,7 @@ from torch.utils.data import TensorDataset, DataLoader
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.append(str(BASE_DIR))                          # pour importer lista.py (à la racine du projet)
 sys.path.append(str(Path(__file__).resolve().parent))   # pour importer ista.py (dans ce dossier)
-from project_ISTA_VS_LISTA.lista import LISTA
-from ista import ISTA
+from lista import LISTA
 
 data_dir = BASE_DIR / "data" / "noiseless_256_512"
 torch.manual_seed(1)
@@ -101,6 +100,6 @@ for i in range(epochs):
 # On recharge le meilleur modèle et on le sauvegarde
 model_lista.load_state_dict(best_weights)
 print(f"Meilleure NMSE de validation : {best_nmse:.2f} dB")
-models_dir = BASE_DIR / "experiments" / "models"
+models_dir = BASE_DIR / "project_ISTA_VS_LISTA" / "resultats_train"
 models_dir.mkdir(parents=True, exist_ok=True)
 torch.save(model_lista.state_dict(), models_dir / f"lista_K{K}.pt")

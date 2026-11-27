@@ -33,7 +33,7 @@ model_ista = ISTA(A=A, b=b_test, L=L, lag=lam, x_true=x_true)
 model_fista = FISTA(A=A, b=b_test, L=L, lag=lam, x_true=x_true) 
 # LISTA
 model_lista = LISTA(A=A, L=L, lag=lam, K=K)
-model_lista.load_state_dict(torch.load(BASE_DIR / "experiments" / "models" / f"lista_K{K}.pt"))
+model_lista.load_state_dict(torch.load(BASE_DIR / "project_ISTA_VS_LISTA" / "resultats_train" / f"lista_K{K}.pt"))
 model_lista.eval()
 
 X_init = np.zeros_like(x_true)
