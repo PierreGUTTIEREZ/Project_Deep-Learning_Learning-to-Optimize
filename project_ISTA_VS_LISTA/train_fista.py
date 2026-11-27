@@ -1,12 +1,8 @@
 from fista import FISTA
-import os
 from pathlib import Path
 import numpy as np
-import matplotlib.pyplot as plt
-from ista import ISTA
 from fista import FISTA
 import sys
-import torch
 sys.path.append(Path(__file__).resolve().parent.parent) 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
