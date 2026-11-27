@@ -7,6 +7,7 @@ import sys
 import torch
 sys.path.append(Path(__file__).resolve().parent.parent)   # pour importer lista.py (à la racine du projet)
 from lista import LISTA
+from lfista import LFISTA
 
 # Chemins
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,20 +26,7 @@ print(f"Dimensions A: {A.shape}, L = {L:.4f}")
 
 lam = 0.005
 
-K = 16   # doit être le même que dans train_lista.py (lam aussi)
-
-# LISTA
-model_lista = LISTA(A=A, L=L, lag=lam, K=K)
-model_lista.load_state_dict(torch.load(BASE_DIR / "project_ISTA_VS_LISTA" / "resultats_train" / f"lista_K{K}.pt"))
-model_lista.eval()
-
-X_init = np.zeros_like(x_true)
-
-epochs = 1000
-# LISTA
-with torch.no_grad():
-    x_layers = model_lista(torch.from_numpy(b_test), return_all=True)
-nmse_lista = [0.0] + [model_lista.compute_nmse_db(x_k, torch.from_numpy(x_true)) for x_k in x_layers]  # 0 dB pour x^(0) = 0
+K = 1000   # doit être le même que dans train_lista.py (lam aussi)
 
 # importation des résultats d'ISTA
 data = np.load("project_ISTA_VS_LISTA/resultats_train/resultats_ista.npz")
@@ -50,12 +38,30 @@ data = np.load("project_ISTA_VS_LISTA/resultats_train/resultats_fista.npz")
 X_fista = data["X_fista"]
 nmse_history_fista = data["nmse_history_fista"]
 
+# importation des résultats de LISTA
+model_lista = LISTA(A=A, L=L, lag=lam, K=K)
+model_lista.load_state_dict(torch.load(BASE_DIR / "project_ISTA_VS_LISTA" / "resultats_train" / f"lista_K{K}.pt"))
+model_lista.eval()
+
+with torch.no_grad():
+    x_layers = model_lista(torch.from_numpy(b_test), return_all=True)
+nmse_lista = [0.0] + [model_lista.compute_nmse_db(x_k, torch.from_numpy(x_true)) for x_k in x_layers]
+
+# importation des résultats de LFISTA
+model_lfista = LFISTA(A=A, L=L, lag=lam, K=K)
+model_lista.load_state_dict(torch.load(BASE_DIR / "project_ISTA_VS_LISTA" / "resultats_train" / f"lfista_K{K}.pt"))
+model_lista.eval()
+
+with torch.no_grad():
+    x_layers = model_lfista(torch.from_numpy(b_test), return_all=True)
+nmse_lfista = [0.0] + [model_lfista.compute_nmse_db(x_k, torch.from_numpy(x_true)) for x_k in x_layers]
 
 # Affichage graphique
 plt.figure(figsize=(8, 5))
 plt.plot(range(len(nmse_history_ista)), nmse_history_ista, label="ISTA", color="navy", lw=2)
 plt.plot(range(len(nmse_history_fista)), nmse_history_fista, label="FISTA", color="red", lw=2)
 plt.plot(range(K + 1), nmse_lista, "-", label=f"LISTA ({K} couches)", color="darkorange", lw=2)
+plt.plot(range(K + 1), nmse_lfista, "-", label=f"LFISTA ({K} couches)", color="chartreuse", lw=2)
 plt.xlabel("Itérations")
 plt.ylabel("NMSE (dB)")
 plt.title(f"Convergence d'ISTA sur le LASSO (noiseless {A.shape[0]}x{A.shape[1]})")
