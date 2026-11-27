@@ -26,7 +26,7 @@ print(f"Dimensions A: {A.shape}, L = {L:.4f}")
 
 lam = 0.005
 
-K = 1000   # doit être le même que dans train_lista.py (lam aussi)
+K = 16   # doit être le même que dans train_lista.py (lam aussi)
 
 # importation des résultats d'ISTA
 data = np.load("project_ISTA_VS_LISTA/resultats_train/resultats_ista.npz")
@@ -58,8 +58,8 @@ nmse_lfista = [0.0] + [model_lfista.compute_nmse_db(x_k, torch.from_numpy(x_true
 
 # Affichage graphique
 plt.figure(figsize=(8, 5))
-plt.plot(range(len(nmse_history_ista)), nmse_history_ista, label="ISTA", color="navy", lw=2)
-plt.plot(range(len(nmse_history_fista)), nmse_history_fista, label="FISTA", color="red", lw=2)
+plt.plot(range(K + 1), nmse_history_ista[:K + 1], label="ISTA", color="navy", lw=2)
+plt.plot(range(K + 1), nmse_history_fista[:K + 1], label="FISTA", color="red", lw=2)
 plt.plot(range(K + 1), nmse_lista, "-", label=f"LISTA ({K} couches)", color="darkorange", lw=2)
 plt.plot(range(K + 1), nmse_lfista, "-", label=f"LFISTA ({K} couches)", color="chartreuse", lw=2)
 plt.xlabel("Itérations")
