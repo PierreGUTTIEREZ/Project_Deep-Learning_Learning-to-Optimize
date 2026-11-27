@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
-from ista import ISTA
 from fista import FISTA
 import sys
 import torch
@@ -28,9 +27,6 @@ lam = 0.005
 
 K = 16   # doit être le même que dans train_lista.py (lam aussi)
 
-# Initialisation
-model_ista = ISTA(A=A, b=b_test, L=L, lag=lam, x_true=x_true)
-model_fista = FISTA(A=A, b=b_test, L=L, lag=lam, x_true=x_true) 
 # LISTA
 model_lista = LISTA(A=A, L=L, lag=lam, K=K)
 model_lista.load_state_dict(torch.load(BASE_DIR / "experiments" / "models" / f"lista_K{K}.pt"))
@@ -39,13 +35,20 @@ model_lista.eval()
 X_init = np.zeros_like(x_true)
 
 epochs = 1000
-print(f"Exécution d'ISTA sur {epochs} itérations...")
-X_ista, nmse_history_ista = model_ista.forward(X_init, epochs=epochs)
-X_fista, nmse_history_fista = model_fista.forward(X_init, epochs=epochs)
 # LISTA
 with torch.no_grad():
     x_layers = model_lista(torch.from_numpy(b_test), return_all=True)
 nmse_lista = [0.0] + [model_lista.compute_nmse_db(x_k, torch.from_numpy(x_true)) for x_k in x_layers]  # 0 dB pour x^(0) = 0
+
+# importation des résultats d'ISTA
+data = np.load("project_ISTA_VS_LISTA/resultats_train/resultats_ista.npz")
+X_ista = data["X_ista"]
+nmse_history_ista = data["nmse_history_ista"]
+
+# importation des résultats de FISTA
+data = np.load("project_ISTA_VS_LISTA/resultats_train/resultats_fista.npz")
+X_fista = data["X_fista"]
+nmse_history_fista = data["nmse_history_fista"]
 
 
 # Affichage graphique

@@ -41,7 +41,7 @@ class FISTA :
         nmse_history = [self.compute_nmse_db(X)]
 
         for _ in range(epochs):
-            X, v, t = self.step_fista(X, v, t)
+            X, v, t = self.step_fista(X[-1], v, t)
             nmse_history.append(self.compute_nmse_db(X))
 
         return X, nmse_history
