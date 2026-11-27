@@ -41,8 +41,8 @@ class LFISTA(nn.Module):
         return (tk_prev - 1) / tk
 
     def forward(self, b, return_all: bool = False):
-        x = torch.zeros(b.shape[0], self.N)
-        x_prev = torch.zeros(b.shape[0], self.N)
+        x = torch.zeros(b.shape[0], self.N, device=b.device)
+        x_prev = torch.zeros(b.shape[0], self.N, device=b.device)
         x_history = []
 
         for k in range(self.K):

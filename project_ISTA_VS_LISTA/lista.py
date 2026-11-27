@@ -28,7 +28,7 @@ class LISTA(nn.Module):
         return torch.sign(z) * torch.clamp(torch.abs(z) - theta, 0.0)
 
     def forward(self, b, return_all: bool = False):
-        x = torch.zeros(b.shape[0], self.N)
+        x = torch.zeros(b.shape[0], self.N, device=b.device)
         x_history = []
 
         for k in range(self.K):

@@ -25,7 +25,7 @@ print(f"Dimensions A: {A.shape}, L = {L:.4f}")
 
 lam = 0.005
 
-K = 16   # doit être le même que dans train_lista.py (lam aussi)
+K = 32   # doit être le même que dans train_lista.py (lam aussi)
 
 # importation des résultats d'ISTA
 data = np.load("project_ISTA_VS_LISTA/resultats_train/resultats_ista.npz")
@@ -63,7 +63,7 @@ plt.plot(range(K + 1), nmse_lista, "-", label=f"LISTA ({K} couches)", color="dar
 plt.plot(range(K + 1), nmse_lfista, "-", label=f"LFISTA ({K} couches)", color="chartreuse", lw=2)
 plt.xlabel("Itérations")
 plt.ylabel("NMSE (dB)")
-plt.title(f"Convergence d'ISTA sur le LASSO (noiseless {A.shape[0]}x{A.shape[1]})")
+plt.title(f"Convergence sur le LASSO (noiseless {A.shape[0]}x{A.shape[1]}) pour K={K}")
 plt.grid(True, linestyle="--", alpha=0.6)
 plt.legend()
 plt.tight_layout()
