@@ -1,8 +1,6 @@
-import os
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
-from fista import FISTA
 import sys
 import torch
 sys.path.append(Path(__file__).resolve().parent.parent)   # pour importer lista.py (à la racine du projet)
@@ -12,6 +10,7 @@ from lfista import LFISTA
 # Chemins
 BASE_DIR = Path(__file__).resolve().parent.parent
 data_dir = BASE_DIR / "data" / "noiseless_256_512"
+resultats_dir = BASE_DIR / "project_ISTA_VS_LISTA" / "resultats_train"
 
 A = np.load(data_dir / "A.npy")
 data = np.load(data_dir / "test_data.npy")
@@ -68,4 +67,5 @@ plt.title(f"Convergence d'ISTA sur le LASSO (noiseless {A.shape[0]}x{A.shape[1]}
 plt.grid(True, linestyle="--", alpha=0.6)
 plt.legend()
 plt.tight_layout()
+plt.savefig(resultats_dir / "display_nmse.png", dpi=150)
 plt.show()

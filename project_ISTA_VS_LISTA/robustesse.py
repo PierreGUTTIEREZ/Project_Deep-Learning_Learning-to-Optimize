@@ -83,12 +83,9 @@ def evaluer(b, x_true, A_utilisee):
         nmse_lista = model_lista.compute_nmse_db(model_lista(b_t), x_t)
         nmse_lfista = model_lfista.compute_nmse_db(model_lfista(b_t), x_t)
 
-    return [nmse_history_ista[K], nmse_history_fista[K],
-            nmse_history_ista[-1], nmse_history_fista[-1],
-            nmse_lista, nmse_lfista]
+    return [nmse_history_ista[-1], nmse_history_fista[100], nmse_lista, nmse_lfista]
 
-methodes = [f"ISTA ({K} it.)", f"FISTA ({K} it.)", f"ISTA ({n_iter} it.)", f"FISTA ({n_iter} it.)",
-            f"LISTA ({K} couches)", f"LFISTA ({K} couches)"]
+methodes = [f"ISTA ({n_iter} it.)", f"FISTA (100 it.)", f"LISTA ({K} couches)", f"LFISTA ({K} couches)"]
 
 
 # ---------------------------------------------------------------
@@ -174,9 +171,9 @@ afficher_tableau("Amplitude de x* (entraînement : 1) — NMSE en dB", amp_value
 # ---------------------------------------------------------------
 # Affichage graphique
 # ---------------------------------------------------------------
-couleurs = ["navy", "red", "navy", "red", "darkorange", "chartreuse"]
-styles = ["-", "-", "--", "--", "-", "-"]
-marqueurs = ["o", "o", "", "", "s", "s"]
+couleurs = ["navy", "red", "darkorange", "chartreuse"]
+styles = ["-", "-", "-", "-"]
+marqueurs = ["o", "o", "s", "s"]
 
 groupes = [
     ("Parcimonie p (entraînement : 0.1)", [str(v) for v in p_values], nmse_p),

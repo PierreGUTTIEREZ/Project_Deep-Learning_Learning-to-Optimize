@@ -1,7 +1,6 @@
 from ista import ISTA
 from pathlib import Path
 import numpy as np
-import matplotlib.pyplot as plt
 from ista import ISTA
 import sys
 sys.path.append(Path(__file__).resolve().parent.parent) 
