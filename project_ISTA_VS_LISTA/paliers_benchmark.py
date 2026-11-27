@@ -14,6 +14,10 @@ from project_ISTA_VS_LISTA.models.lista import LISTA
 from project_ISTA_VS_LISTA.models.lfista import LFISTA
 from project_ISTA_VS_LISTA.models.lista_cp import LISTA_CP
 
+# Gestion automatique GPU / CPU compatible multi-utilisateurs
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Périphérique sélectionné : {device}")
+
 data_dir = BASE_DIR / "data" / "noiseless_256_512"
 res_dir = CURRENT_DIR / "resultats_train"
 res_dir.mkdir(parents=True, exist_ok=True)
@@ -22,8 +26,8 @@ res_dir.mkdir(parents=True, exist_ok=True)
 A = np.load(data_dir / "A.npy")
 test_data = np.load(data_dir / "test_data.npy")
 M = A.shape[0]
-b_test = torch.from_numpy(test_data[:, :M])
-x_true = torch.from_numpy(test_data[:, M:])
+b_test = torch.from_numpy(test_data[:, :M]).float().to(device)
+x_true = torch.from_numpy(test_data[:, M:]).float().to(device)
 L = np.linalg.svd(A, compute_uv=False)[0]**2
 lam = 0.005
 K = 16
@@ -42,8 +46,8 @@ trajectories["FISTA"] = list(data_fista["nmse_history_fista"])
 # C. LISTA (K=16)
 p_lista = res_dir / f"lista_K{K}.pt"
 if p_lista.exists():
-    m_lista = LISTA(A, L, lam, K=K)
-    m_lista.load_state_dict(torch.load(p_lista, weights_only=False))
+    m_lista = LISTA(A, L, lam, K=K).to(device)
+    m_lista.load_state_dict(torch.load(p_lista, map_location=device, weights_only=False))
     m_lista.eval()
     with torch.no_grad():
         x_layers = m_lista(b_test, return_all=True)
@@ -52,8 +56,8 @@ if p_lista.exists():
 # D. LFISTA (K=16)
 p_lfista = res_dir / f"lfista_K{K}.pt"
 if p_lfista.exists():
-    m_lfista = LFISTA(A, L, lam, K=K)
-    m_lfista.load_state_dict(torch.load(p_lfista, weights_only=False))
+    m_lfista = LFISTA(A, L, lam, K=K).to(device)
+    m_lfista.load_state_dict(torch.load(p_lfista, map_location=device, weights_only=False))
     m_lfista.eval()
     with torch.no_grad():
         x_layers = m_lfista(b_test, return_all=True)
@@ -62,8 +66,8 @@ if p_lfista.exists():
 # E. LISTA-CP (K=16)
 p_listacp = res_dir / f"lista_cp_K{K}.pt"
 if p_listacp.exists():
-    m_cp = LISTA_CP(A, L, lam, K=K)
-    m_cp.load_state_dict(torch.load(p_listacp, weights_only=False))
+    m_cp = LISTA_CP(A, L, lam, K=K).to(device)
+    m_cp.load_state_dict(torch.load(p_listacp, map_location=device, weights_only=False))
     m_cp.eval()
     with torch.no_grad():
         x_layers = m_cp(b_test, return_all=True)
@@ -182,7 +186,7 @@ plt.tight_layout()
 fig_path = res_dir / "paliers_iterations.png"
 plt.savefig(fig_path, dpi=300)
 print(f"Graphique comparatif des paliers sauvegardé dans : {fig_path}")
-# On évite le blocage dans les scripts non-interactifs
+
 if hasattr(sys, 'ps1') or not sys.flags.interactive:
     plt.close()
 else:

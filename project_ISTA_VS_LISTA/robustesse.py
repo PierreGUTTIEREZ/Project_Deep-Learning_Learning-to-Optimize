@@ -33,13 +33,15 @@ lam = 0.005    # doit être le même que dans train_lista.py / train_lfista.py
 K = 16         # nombre de couches de LISTA / LFISTA (et nombre d'itérations pour la comparaison "à égalité")
 n_iter = 1000  # nombre d'itérations pour la "meilleure" solution classique
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 # importation de LISTA et LFISTA (entraînés sur les données de référence)
-model_lista = LISTA(A=A, L=L, lag=lam, K=K)
-model_lista.load_state_dict(torch.load(resultats_dir / f"lista_K{K}.pt"))
+model_lista = LISTA(A=A, L=L, lag=lam, K=K).to(device)
+model_lista.load_state_dict(torch.load(resultats_dir / f"lista_K{K}.pt", map_location=device, weights_only=False))
 model_lista.eval()
 
-model_lfista = LFISTA(A=A, L=L, lag=lam, K=K)
-model_lfista.load_state_dict(torch.load(resultats_dir / f"lfista_K{K}.pt"))
+model_lfista = LFISTA(A=A, L=L, lag=lam, K=K).to(device)
+model_lfista.load_state_dict(torch.load(resultats_dir / f"lfista_K{K}.pt", map_location=device, weights_only=False))
 model_lfista.eval()
 
 

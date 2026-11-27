@@ -53,12 +53,14 @@ n_train = train_data.shape[0]
 L = np.linalg.svd(A, compute_uv=False)[0]**2
 print(f"Dimensions A: {A.shape}, L = {L:.4f}")
 
-model_lista = LISTA(A=A, L=L, lag=lam, K=K)
-model_lista.load_state_dict(torch.load(resultats_dir / f"lista_K{K}.pt"))
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+model_lista = LISTA(A=A, L=L, lag=lam, K=K).to(device)
+model_lista.load_state_dict(torch.load(resultats_dir / f"lista_K{K}.pt", map_location=device, weights_only=False))
 model_lista.eval()
 
-model_lfista = LFISTA(A=A, L=L, lag=lam, K=K)
-model_lfista.load_state_dict(torch.load(resultats_dir / f"lfista_K{K}.pt"))
+model_lfista = LFISTA(A=A, L=L, lag=lam, K=K).to(device)
+model_lfista.load_state_dict(torch.load(resultats_dir / f"lfista_K{K}.pt", map_location=device, weights_only=False))
 model_lfista.eval()
 
 # importation des résultats d'ISTA et FISTA (train_ista.py / train_fista.py, 1000 itérations sur le même test)

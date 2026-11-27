@@ -7,9 +7,9 @@ from torch.utils.data import TensorDataset, DataLoader
 
 # Chemins
 BASE_DIR = Path(__file__).resolve().parent.parent
-sys.path.append(str(BASE_DIR))                          # pour importer lista.py (à la racine du projet)
-sys.path.append(str(Path(__file__).resolve().parent))   # pour importer ista.py (dans ce dossier)
-from lfista import LFISTA
+sys.path.insert(0, str(BASE_DIR))
+sys.path.insert(0, str(BASE_DIR / "project_ISTA_VS_LISTA" / "models"))
+from project_ISTA_VS_LISTA.models.lfista import LFISTA
 
 data_dir = BASE_DIR / "data" / "noiseless_256_512"
 torch.manual_seed(1)
