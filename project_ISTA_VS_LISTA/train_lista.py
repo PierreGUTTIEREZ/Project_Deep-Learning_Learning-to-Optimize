@@ -30,7 +30,7 @@ L = np.linalg.svd(A, compute_uv=False)[0]**2
 print(f"Dimensions A: {A.shape}, L = {L:.4f}")
 
 lam = 0.005
-K = 1000
+K = 16
 
 # Création du réseau
 model_lista = LISTA(A=A, L=L, lag=lam, K=K)

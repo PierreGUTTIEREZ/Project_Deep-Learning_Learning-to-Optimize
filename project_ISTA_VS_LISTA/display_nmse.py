@@ -49,8 +49,8 @@ nmse_lista = [0.0] + [model_lista.compute_nmse_db(x_k, torch.from_numpy(x_true))
 
 # importation des résultats de LFISTA
 model_lfista = LFISTA(A=A, L=L, lag=lam, K=K)
-model_lista.load_state_dict(torch.load(BASE_DIR / "project_ISTA_VS_LISTA" / "resultats_train" / f"lfista_K{K}.pt"))
-model_lista.eval()
+model_lfista.load_state_dict(torch.load(BASE_DIR / "project_ISTA_VS_LISTA" / "resultats_train" / f"lfista_K{K}.pt"))
+model_lfista.eval()
 
 with torch.no_grad():
     x_layers = model_lfista(torch.from_numpy(b_test), return_all=True)
