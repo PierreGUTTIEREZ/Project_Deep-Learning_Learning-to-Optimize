@@ -24,12 +24,13 @@ L = np.linalg.svd(A, compute_uv=False)[0]**2
 print(f"Dimensions A: {A.shape}, L = {L:.4f}")
 
 lam = 0.005
-epochs = 1000
+K = 1000
 X_init = np.zeros_like(x_true)
 
 # Initialisation
 model_fista = FISTA(A=A, b=b_test, L=L, lag=lam, x_true=x_true)
 
-X_fista, nmse_history_fista = model_fista.forward(X_init, epochs=epochs)
+X_fista, nmse_history_fista = model_fista.forward(X_init, epochs=K)
 
 np.savez("project_ISTA_VS_LISTA/resultats_train/resultats_fista.npz", X_fista=X_fista, nmse_history_fista=nmse_history_fista)
+print("FISTA training completed. Results saved to 'resultats_fista.npz'.")

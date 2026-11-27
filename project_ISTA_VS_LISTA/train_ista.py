@@ -24,12 +24,13 @@ L = np.linalg.svd(A, compute_uv=False)[0]**2
 print(f"Dimensions A: {A.shape}, L = {L:.4f}")
 
 lam = 0.005
-epochs = 1000
+K = 1000
 X_init = np.zeros_like(x_true)
 
 # Initialisation
 model_ista = ISTA(A=A, b=b_test, L=L, lag=lam, x_true=x_true)
 
-X_ista, nmse_history_ista = model_ista.forward(X_init, epochs=epochs)
+X_ista, nmse_history_ista = model_ista.forward(X_init, epochs=K)
 
 np.savez("project_ISTA_VS_LISTA/resultats_train/resultats_ista.npz", X_ista=X_ista, nmse_history_ista=nmse_history_ista)
+print("ISTA training completed. Results saved to 'resultats_ista.npz'.")
