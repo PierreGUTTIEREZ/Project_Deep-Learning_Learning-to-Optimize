@@ -147,6 +147,7 @@ for nom_cas, (b, nb) in cas.items():
     print(f"\nChronométrage ({nom_cas}, {nb} problème(s) à la fois)...")
     temps[nom_cas] = {
         f"ISTA ({K} it.)": chrono(lambda: run_ista(b, K)) / nb,
+        f"ISTA ({1000} it.)": chrono(lambda: run_ista(b, 1000)) / nb,
         f"FISTA ({K} it.)": chrono(lambda: run_fista(b, K)) / nb,
         f"LISTA ({K} couches)": chrono(lambda: run_reseau(model_lista, b)) / nb,
         f"LFISTA ({K} couches)": chrono(lambda: run_reseau(model_lfista, b)) / nb,
@@ -162,67 +163,6 @@ for nom_cas, (b, nb) in cas.items():
 
 
 # ---------------------------------------------------------------
-# 4) Temps d'entraînement : estimation (ou valeur mesurée si renseignée)
-# ---------------------------------------------------------------
-def estimer_entrainement(model):
-    # Chronomètre n_pas_estim pas d'entraînement (forward + backward + Adam), puis extrapole
-    # aux epochs_train * (n_train / batch_size) pas. Le modèle est neuf : les poids sauvegardés ne sont pas touchés.
-    criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
-    b_train = torch.from_numpy(train_data[:, :M])
-    x_train = torch.from_numpy(train_data[:, M:])
-
-    durees = []
-    for i in range(n_pas_estim + 1):
-        idx = torch.randint(0, n_train, (batch_size,))
-        t0 = time.perf_counter()
-        loss = criterion(model(b_train[idx]), x_train[idx])
-        optimizer.zero_grad()
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-        optimizer.step()
-        if i > 0:   # le premier pas (plus lent) n'est pas compté
-            durees.append(time.perf_counter() - t0)
-
-    n_pas_total = epochs_train * int(np.ceil(n_train / batch_size))
-    return float(np.median(durees)) * n_pas_total
-
-print("\nEstimation du temps d'entraînement...")
-t_train_lista_estim = estimer_entrainement(LISTA(A=A, L=L, lag=lam, K=K))
-t_train_lfista_estim = estimer_entrainement(LFISTA(A=A, L=L, lag=lam, K=K))
-
-t_train_lista = T_TRAIN_LISTA_MESURE if T_TRAIN_LISTA_MESURE is not None else t_train_lista_estim
-t_train_lfista = T_TRAIN_LFISTA_MESURE if T_TRAIN_LFISTA_MESURE is not None else t_train_lfista_estim
-source_lista = "mesuré" if T_TRAIN_LISTA_MESURE is not None else "estimé"
-source_lfista = "mesuré" if T_TRAIN_LFISTA_MESURE is not None else "estimé"
-
-print(f"  LISTA  : {t_train_lista / 60:.1f} min ({source_lista}, estimation = {t_train_lista_estim / 60:.1f} min)")
-print(f"  LFISTA : {t_train_lfista / 60:.1f} min ({source_lfista}, estimation = {t_train_lfista_estim / 60:.1f} min)")
-
-
-# ---------------------------------------------------------------
-# 5) Point de rentabilité : N* = T_train / (gain de temps par problème, à précision égale avec FISTA)
-# ---------------------------------------------------------------
-def point_rentabilite(t_train, t_fista_meme_precision, t_reseau):
-    gain = t_fista_meme_precision - t_reseau
-    if gain <= 0:
-        return None   # le réseau n'est pas plus rapide que FISTA à précision égale : jamais rentable
-    return t_train / gain
-
-rentabilite = {}
-print("\nPoint de rentabilité face à FISTA (nombre de problèmes à résoudre pour amortir l'entraînement)")
-for nom_cas in cas:
-    t = temps[nom_cas]
-    n_lista = point_rentabilite(t_train_lista, t[f"FISTA ({n_fista_lista} it., = LISTA)"],
-                                t[f"LISTA ({K} couches)"]) if n_fista_lista is not None else None
-    n_lfista = point_rentabilite(t_train_lfista, t[f"FISTA ({n_fista_lfista} it., = LFISTA)"],
-                                 t[f"LFISTA ({K} couches)"]) if n_fista_lfista is not None else None
-    rentabilite[nom_cas] = (n_lista, n_lfista)
-    texte = lambda n: f"{n:,.0f} problèmes" if n is not None else "jamais"
-    print(f"  {nom_cas:9s} : LISTA {texte(n_lista)} | LFISTA {texte(n_lfista)}")
-
-
-# ---------------------------------------------------------------
 # Sauvegarde des résultats
 # ---------------------------------------------------------------
 methodes_batch = list(temps["batch"].keys())
@@ -233,10 +173,7 @@ np.savez(resultats_dir / "resultats_cout.npz",
          n_fista_lfista=-1 if n_fista_lfista is None else n_fista_lfista,
          methodes=methodes_batch,
          temps_batch=[temps["batch"][m] for m in methodes_batch],
-         temps_unitaire=[temps["unitaire"][m] for m in methodes_batch],
-         t_train_lista=t_train_lista, t_train_lfista=t_train_lfista,
-         rentabilite_batch=[np.nan if n is None else n for n in rentabilite["batch"]],
-         rentabilite_unitaire=[np.nan if n is None else n for n in rentabilite["unitaire"]])
+         temps_unitaire=[temps["unitaire"][m] for m in methodes_batch])
 print(f"\nRésultats sauvegardés dans {resultats_dir / 'resultats_cout.npz'}")
 
 

@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,6 +12,7 @@ from models.lista_cp import LISTA_CP
 # Chemins
 BASE_DIR = Path(__file__).resolve().parent.parent
 data_dir = BASE_DIR / "data" / "noiseless_256_512"
+resultats_dir = BASE_DIR / "project_ISTA_VS_LISTA" / "resultats_train"
 
 A = np.load(data_dir / "A.npy")
 data = np.load(data_dir / "test_data.npy")
@@ -78,4 +78,5 @@ plt.title(f"Convergence sur le LASSO (noiseless {A.shape[0]}x{A.shape[1]}) pour 
 plt.grid(True, linestyle="--", alpha=0.6)
 plt.legend()
 plt.tight_layout()
+plt.savefig(resultats_dir / "display_nmse.png", dpi=150)
 plt.show()
