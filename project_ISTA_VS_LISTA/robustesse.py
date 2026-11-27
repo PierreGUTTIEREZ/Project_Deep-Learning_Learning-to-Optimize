@@ -1,4 +1,5 @@
 import sys
+import csv
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,15 +7,20 @@ import torch
 
 # Chemins
 BASE_DIR = Path(__file__).resolve().parent.parent
-sys.path.append(str(Path(__file__).resolve().parent))   # pour importer les classes (dans ce dossier)
-from ista import ISTA
-from fista import FISTA
-from lista import LISTA
-from lfista import LFISTA
+sys.path.insert(0, str(BASE_DIR))
+from project_ISTA_VS_LISTA.models.ista import ISTA
+from project_ISTA_VS_LISTA.models.fista import FISTA
+from project_ISTA_VS_LISTA.models.lista import LISTA
+from project_ISTA_VS_LISTA.models.lista_cp import LISTA_CP
+from project_ISTA_VS_LISTA.models.lfista import LFISTA
 
 data_dir = BASE_DIR / "data" / "noiseless_256_512"
 robu_dir = BASE_DIR / "data" / "robustesse"
 resultats_dir = BASE_DIR / "project_ISTA_VS_LISTA" / "resultats_train"
+
+# Gestion automatique GPU / CPU
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Périphérique sélectionné : {device}")
 
 rng = np.random.default_rng(1)   # pour que les perturbations générées ici soient reproductibles
 
@@ -29,20 +35,40 @@ x_ref = data_ref[:, M:]       # Shape: (1024, 512)
 L = np.linalg.svd(A, compute_uv=False)[0]**2
 print(f"Dimensions A: {A.shape}, L = {L:.4f}")
 
-lam = 0.005    # doit être le même que dans train_lista.py / train_lfista.py
-K = 16         # nombre de couches de LISTA / LFISTA (et nombre d'itérations pour la comparaison "à égalité")
-n_iter = 1000  # nombre d'itérations pour la "meilleure" solution classique
+lam = 0.005    # doit être le même que dans les scripts d'entraînement
+K = 16         # nombre de couches des réseaux entraînés
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# ---------------------------------------------------------------
+# Modèles calibrés : chaque méthode est arrêtée au nombre d'itérations / couches
+# qu'il lui faut pour atteindre -10 dB sur les données de référence (paliers_benchmark.py).
+# Elles sont donc toutes à la même précision au départ, et on regarde comment elles se dégradent.
+# ---------------------------------------------------------------
+palier = 10   # en dB (colonne "Palier_10dB" du benchmark)
 
-# importation de LISTA et LFISTA (entraînés sur les données de référence)
-model_lista = LISTA(A=A, L=L, lag=lam, K=K).to(device)
-model_lista.load_state_dict(torch.load(resultats_dir / f"lista_K{K}.pt", map_location=device, weights_only=False))
-model_lista.eval()
+noms_csv = {"ISTA": "ISTA", "FISTA": "FISTA", f"LISTA (K={K})": "LISTA",
+            f"LISTA-CP (K={K})": "LISTA-CP", f"LFISTA (K={K})": "LFISTA"}
+n_iter = {}
+with open(resultats_dir / "paliers_iterations.csv", encoding="utf-8") as f:
+    for ligne in csv.DictReader(f):
+        if ligne["Algorithme"] in noms_csv:
+            n_iter[noms_csv[ligne["Algorithme"]]] = int(ligne[f"Palier_{palier}dB"])
 
-model_lfista = LFISTA(A=A, L=L, lag=lam, K=K).to(device)
-model_lfista.load_state_dict(torch.load(resultats_dir / f"lfista_K{K}.pt", map_location=device, weights_only=False))
-model_lfista.eval()
+methodes = ["ISTA", "FISTA", "LISTA", "LISTA-CP", "LFISTA"]
+print("Nombre d'itérations / couches pour -10 dB (benchmark) : "
+      + " | ".join(f"{m} {n_iter[m]}" for m in methodes))
+
+# importation des réseaux (entraînés sur les données de référence)
+def charger_reseau(classe, nom_fichier):
+    model = classe(A=A, L=L, lag=lam, K=K).to(device)
+    model.load_state_dict(torch.load(resultats_dir / nom_fichier, map_location=device, weights_only=False))
+    model.eval()
+    return model
+
+reseaux = {
+    "LISTA": charger_reseau(LISTA, f"lista_K{K}.pt"),
+    "LISTA-CP": charger_reseau(LISTA_CP, f"lista_cp_K{K}.pt"),
+    "LFISTA": charger_reseau(LFISTA, f"lfista_K{K}.pt"),
+}
 
 
 # ---------------------------------------------------------------
@@ -69,133 +95,107 @@ def perturber_A(eps):
     return A_pert.astype(np.float32)
 
 def evaluer(b, x_true, A_utilisee):
-    # NMSE (dB) de chaque méthode sur un scénario
-    # ISTA / FISTA utilisent la "vraie" matrice du scénario, LISTA / LFISTA gardent les poids appris avec A
+    # NMSE (dB) de chaque modèle calibré sur un scénario
+    # ISTA / FISTA utilisent la "vraie" matrice du scénario, les réseaux gardent les poids appris avec A
     L_utilisee = np.linalg.svd(A_utilisee, compute_uv=False)[0]**2
     X_init = np.zeros_like(x_true)
+    nmse = {}
 
     model_ista = ISTA(A=A_utilisee, b=b, L=L_utilisee, lag=lam, x_true=x_true)
-    _, nmse_history_ista = model_ista.forward(X_init, epochs=n_iter)
+    _, nmse_history_ista = model_ista.forward(X_init, epochs=n_iter["ISTA"])
+    nmse["ISTA"] = nmse_history_ista[-1]
 
     model_fista = FISTA(A=A_utilisee, b=b, L=L_utilisee, lag=lam, x_true=x_true)
-    _, nmse_history_fista = model_fista.forward(X_init, epochs=n_iter)
+    _, nmse_history_fista = model_fista.forward(X_init, epochs=n_iter["FISTA"])
+    nmse["FISTA"] = nmse_history_fista[-1]
 
+    b_t = torch.from_numpy(b).float().to(device)
+    x_t = torch.from_numpy(x_true).float().to(device)
     with torch.no_grad():
-        b_t, x_t = torch.from_numpy(b), torch.from_numpy(x_true)
-        nmse_lista = model_lista.compute_nmse_db(model_lista(b_t), x_t)
-        nmse_lfista = model_lfista.compute_nmse_db(model_lfista(b_t), x_t)
+        for nom, model in reseaux.items():
+            x_layers = model(b_t, return_all=True)
+            nmse[nom] = model.compute_nmse_db(x_layers[n_iter[nom] - 1], x_t)   # sortie de la couche n_iter[nom]
 
-    return [nmse_history_ista[-1], nmse_history_fista[100], nmse_lista, nmse_lfista]
-
-methodes = [f"ISTA ({n_iter} it.)", f"FISTA (100 it.)", f"LISTA ({K} couches)", f"LFISTA ({K} couches)"]
+    return [nmse[m] for m in methodes]
 
 
 # ---------------------------------------------------------------
-# Scénarios
+# Scénarios : (titre, valeurs testées, fonction qui renvoie (b, x*, A du scénario))
 # ---------------------------------------------------------------
-print("Référence...")
-nmse_ref = evaluer(b_ref, x_ref, A)
+def scenario_p(p):
+    return (b_ref, x_ref, A) if p == 0.1 else (*charger_scenario(f"p{p:.2f}"), A)
 
-# 1) Parcimonie p (entraînement : p = 0.1)
-p_values = [0.05, 0.1, 0.15, 0.2, 0.3]
-nmse_p = []
-for p in p_values:
-    print(f"Parcimonie p = {p}...")
-    if p == 0.1:
-        nmse_p.append(nmse_ref)
-    else:
-        b, x = charger_scenario(f"p{p:.2f}")
-        nmse_p.append(evaluer(b, x, A))
-
-# 2) Bruit (entraînement : sans bruit). 20 dB vient de gen_data.py, les autres sont ajoutés ici
-snr_values = [np.inf, 40, 30, 20, 10]
-nmse_snr = []
-for snr in snr_values:
-    print(f"SNR = {snr} dB...")
+def scenario_snr(snr):
     if snr == np.inf:
-        nmse_snr.append(nmse_ref)
-    elif snr == 20:
-        b, x = charger_scenario("snr20")
-        nmse_snr.append(evaluer(b, x, A))
-    else:
-        nmse_snr.append(evaluer(ajouter_bruit(b_ref, snr), x_ref, A))
+        return b_ref, x_ref, A
+    if snr == 20:
+        return (*charger_scenario("snr20"), A)
+    return ajouter_bruit(b_ref, snr), x_ref, A
 
-# 3) Matrice A perturbée (les réseaux ne sont pas réentraînés)
-eps_values = [0.0, 0.01, 0.05, 0.1]
-nmse_eps = []
-for eps in eps_values:
-    print(f"Perturbation de A : eps = {eps}...")
+def scenario_eps(eps):
     if eps == 0.0:
-        nmse_eps.append(nmse_ref)
-    else:
-        A_pert = perturber_A(eps)
-        b = (x_ref @ A_pert.T).astype(np.float32)
-        nmse_eps.append(evaluer(b, x_ref, A_pert))
+        return b_ref, x_ref, A
+    A_pert = perturber_A(eps)
+    return (x_ref @ A_pert.T).astype(np.float32), x_ref, A_pert
 
-# 4) Amplitude de x* (entraînement : amplitude 1)
-amp_values = [0.5, 1.0, 2.0, 5.0]
-nmse_amp = []
-for amp in amp_values:
-    print(f"Amplitude de x* : x {amp}...")
-    if amp == 1.0:
-        nmse_amp.append(nmse_ref)
-    else:
-        x = (amp * x_ref).astype(np.float32)
-        b = (x @ A.T).astype(np.float32)
-        nmse_amp.append(evaluer(b, x, A))
+def scenario_amp(amp):
+    x = (amp * x_ref).astype(np.float32)
+    return (x @ A.T).astype(np.float32), x, A
 
-nmse_p, nmse_snr, nmse_eps, nmse_amp = np.array(nmse_p), np.array(nmse_snr), np.array(nmse_eps), np.array(nmse_amp)
+groupes = {
+    "p": ("Parcimonie p (entraînement : 0.1)", [0.05, 0.1, 0.15, 0.2, 0.3], scenario_p),
+    "snr": ("SNR en dB (entraînement : sans bruit)", [np.inf, 40, 30, 20, 10], scenario_snr),
+    "eps": ("Perturbation ε de A (entraînement : 0)", [0.0, 0.01, 0.05, 0.1], scenario_eps),
+    "amp": ("Amplitude de x* (entraînement : 1)", [0.5, 1.0, 2.0, 5.0], scenario_amp),
+}
+
+resultats = {}   # resultats[groupe] = NMSE (n_valeurs, n_methodes)
+for cle, (titre, valeurs, scenario) in groupes.items():
+    print(f"{titre}...")
+    resultats[cle] = np.array([evaluer(*scenario(v)) for v in valeurs])
 
 # Sauvegarde des résultats (une ligne par valeur testée, une colonne par méthode)
-np.savez(resultats_dir / "resultats_robustesse.npz", methodes=methodes,
-         p_values=p_values, nmse_p=nmse_p,
-         snr_values=snr_values, nmse_snr=nmse_snr,
-         eps_values=eps_values, nmse_eps=nmse_eps,
-         amp_values=amp_values, nmse_amp=nmse_amp)
+sauvegarde = {"methodes": methodes, "n_iter": [n_iter[m] for m in methodes]}
+for cle, (titre, valeurs, _) in groupes.items():
+    sauvegarde[f"{cle}_values"] = valeurs
+    sauvegarde[f"nmse_{cle}"] = resultats[cle]
+np.savez(resultats_dir / "resultats_robustesse.npz", **sauvegarde)
 print(f"Résultats sauvegardés dans {resultats_dir / 'resultats_robustesse.npz'}")
 
 
 # ---------------------------------------------------------------
-# Affichage dans le terminal
+# Affichage dans le terminal : NMSE (dB) de chaque modèle calibré
 # ---------------------------------------------------------------
-def afficher_tableau(titre, valeurs, nmse):
-    print(f"\n{titre}")
-    print(f"{'':>10s}" + "".join(f"{m:>20s}" for m in methodes))
-    for v, ligne in zip(valeurs, nmse):
-        print(f"{str(v):>10s}" + "".join(f"{n:>20.2f}" for n in ligne))
-
-afficher_tableau("Parcimonie p (entraînement : 0.1) — NMSE en dB", p_values, nmse_p)
-afficher_tableau("SNR en dB (entraînement : sans bruit = inf) — NMSE en dB", snr_values, nmse_snr)
-afficher_tableau("Perturbation eps de A (entraînement : 0) — NMSE en dB", eps_values, nmse_eps)
-afficher_tableau("Amplitude de x* (entraînement : 1) — NMSE en dB", amp_values, nmse_amp)
+entete = "".join(f"{f'{m} ({n_iter[m]})':>16s}" for m in methodes)
+for cle, (titre, valeurs, _) in groupes.items():
+    print(f"\n{titre} — NMSE en dB")
+    print(f"{'':>8s}" + entete)
+    for v, ligne in zip(valeurs, resultats[cle]):
+        print(f"{str(v):>8s}" + "".join(f"{n:>16.2f}" for n in ligne))
 
 
 # ---------------------------------------------------------------
 # Affichage graphique
 # ---------------------------------------------------------------
-couleurs = ["navy", "red", "darkorange", "chartreuse"]
-styles = ["-", "-", "-", "-"]
-marqueurs = ["o", "o", "s", "s"]
-
-groupes = [
-    ("Parcimonie p (entraînement : 0.1)", [str(v) for v in p_values], nmse_p),
-    ("SNR en dB (entraînement : sans bruit)", ["∞" if v == np.inf else str(v) for v in snr_values], nmse_snr),
-    ("Perturbation ε de A (entraînement : 0)", [str(v) for v in eps_values], nmse_eps),
-    ("Amplitude de x* (entraînement : 1)", [str(v) for v in amp_values], nmse_amp),
-]
+couleurs = {"ISTA": "navy", "FISTA": "red", "LISTA": "darkorange", "LISTA-CP": "magenta", "LFISTA": "chartreuse"}
+marqueurs = {"ISTA": "o", "FISTA": "o", "LISTA": "s", "LISTA-CP": "D", "LFISTA": "^"}
 
 plt.figure(figsize=(14, 9))
-for i, (titre, labels, nmse) in enumerate(groupes):
+for i, (cle, (titre, valeurs, _)) in enumerate(groupes.items()):
     plt.subplot(2, 2, i + 1)
+    labels = ["∞" if v == np.inf else str(v) for v in valeurs]
     for j, m in enumerate(methodes):
-        plt.plot(labels, nmse[:, j], linestyle=styles[j], marker=marqueurs[j], color=couleurs[j], label=m, lw=2)
+        plt.plot(labels, resultats[cle][:, j], marker=marqueurs[m], color=couleurs[m],
+                 label=f"{m} ({n_iter[m]} it.)", lw=2)
+    plt.axhline(-palier, color="gray", linestyle=":", lw=1.5)   # niveau de départ commun
     plt.xlabel(titre)
     plt.ylabel("NMSE (dB)")
     plt.grid(True, linestyle="--", alpha=0.6)
     if i == 0:
         plt.legend(fontsize=8)
 
-plt.suptitle(f"Robustesse hors distribution d'entraînement (noiseless {A.shape[0]}x{A.shape[1]})")
+plt.suptitle(f"Robustesse à précision égale : chaque méthode est calibrée pour atteindre -{palier} dB "
+             f"sur les données d'entraînement")
 plt.tight_layout()
 plt.savefig(resultats_dir / "robustesse.png", dpi=150)
 plt.show()
