@@ -27,13 +27,15 @@ b_val, x_val = torch.from_numpy(val_data[:, :M]), torch.from_numpy(val_data[:, M
 b_test, x_test = torch.from_numpy(test_data[:, :M]), torch.from_numpy(test_data[:, M:])      # (1024, 256), (1024, 512)
 
 L = np.linalg.svd(A, compute_uv=False)[0]**2
-print(f"Dimensions A: {A.shape}, L = {L:.4f}")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Dimensions A: {A.shape}, L = {L:.4f} | Device: {device}")
 
 lam = 0.005
-K = 16
+K = 32
 
 # Création du réseau
-model_lfista = LFISTA(A=A, L=L, lag=lam, K=K)
+model_lfista = LFISTA(A=A, L=L, lag=lam, K=K).to(device)
+b_val, x_val = b_val.to(device), x_val.to(device)
 print(f"Nombre de paramètres : {sum(p.numel() for p in model_lfista.parameters()):,}")
 
 # Entraînement
@@ -63,6 +65,7 @@ for i in range(epochs):
 
     # Loop on mini-batchs
     for b_batch, x_batch in train_loader:
+        b_batch, x_batch = b_batch.to(device), x_batch.to(device)
 
         # compute the prediction using the previous parameters of the neural network
         x_pred = model_lfista(b_batch)
